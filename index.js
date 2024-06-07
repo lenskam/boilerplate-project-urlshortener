@@ -8,13 +8,21 @@ const app = express();
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
+// Update
+app.use(bodyParser.urlencoded({ extended: false }));
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
 
 // models
 const Schema = mongoose.Schema;
 
 const urlSchema = new Schema({
   original_url: { type: String, required: true },
-  short_url: { type: String, required: true }
+  short_url: { type: String, required: false }
 });
 
 let url = mongoose.model('URL', urlSchema);
@@ -28,14 +36,6 @@ app.get('/', function(req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
-// Update
-app.use(bodyParser.urlencoded({ extended: false }));
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
 
 // Error handler
 app.use(function (err, req, res, next) {
@@ -62,11 +62,8 @@ app.post('/api/shorturl', async (req, res) => {
   }
 
   try {
-    const hostname = new url(originalUrl).hostname;
-    dns.lookup(hostname, async (err) => {
-      if (err) {
-        return res.json({ error: 'invalid url' });
-      }
+    const hostname = new url({original_url: originalUrl});
+    
 
       const shortUrl = Math.floor(Math.random() * 100000).toString();
       const newUrl = new url({
@@ -79,7 +76,6 @@ app.post('/api/shorturl', async (req, res) => {
         original_url: savedUrl.original_url,
         short_url: savedUrl.short_url
       });
-    });
   } catch (err) {
     res.json({ error: 'invalid url' });
   }
