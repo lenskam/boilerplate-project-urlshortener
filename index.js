@@ -17,6 +17,8 @@ const urlSchema = new Schema({
   short_url: { type: String, required: true }
 });
 
+let url = mongoose.model('URL', urlSchema);
+
 // For FCC testing
 app.use(cors());
 
@@ -51,7 +53,7 @@ app.get('/api/hello', function(req, res) {
 });
 
 // POST endpoint to create short URL
-app.post('/api/shorturl', (req, res) => {
+app.post('/api/shorturl', async (req, res) => {
   const originalUrl = req.body.url;
   const urlRegex = /^(http|https):\/\/[^ "]+$/;
 
@@ -59,25 +61,28 @@ app.post('/api/shorturl', (req, res) => {
     return res.json({ error: 'invalid url' });
   }
 
-  dns.lookup(new URL(originalUrl).hostname, (err) => {
-    if (err) {
-      return res.json({ error: 'invalid url' });
-    }
+  try {
+    const hostname = new url(originalUrl).hostname;
+    dns.lookup(hostname, async (err) => {
+      if (err) {
+        return res.json({ error: 'invalid url' });
+      }
 
-    const shortUrl = Math.floor(Math.random() * 100000).toString();
-    const newUrl = new URL({
-      original_url: originalUrl,
-      short_url: shortUrl
-    });
+      const shortUrl = Math.floor(Math.random() * 100000).toString();
+      const newUrl = new url({
+        original_url: originalUrl,
+        short_url: shortUrl
+      });
 
-    newUrl.save((err, data) => {
-      if (err) return console.error(err);
+      const savedUrl = await newUrl.save();
       res.json({
-        original_url: data.original_url,
-        short_url: data.short_url
+        original_url: savedUrl.original_url,
+        short_url: savedUrl.short_url
       });
     });
-  });
+  } catch (err) {
+    res.json({ error: 'invalid url' });
+  }
 });
 
 
